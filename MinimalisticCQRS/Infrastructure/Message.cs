@@ -67,8 +67,8 @@ namespace MinimalisticCQRS.Infrastructure
 
         public static bool operator ==(Message m1, Message m2)
         {
-            if (ReferenceEquals(m1, m2)) return true;
-            if (ReferenceEquals(null, m1) || ReferenceEquals(null, m2)) return false;
+            if (m1 == m2) return true;
+            if (ReferenceEquals(m1, null) || ReferenceEquals(m2, null)) return false;
             if (m1.GetHashCode() != m2.GetHashCode()) return false;
             if (m1.MethodName != m2.MethodName) return false;
             if (m1.Parameters.Count() != m2.Parameters.Count()) return false;
