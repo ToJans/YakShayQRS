@@ -6,14 +6,14 @@ essence are not necessary to reach your goal).
 
 It is a CQRS example that supports both the conventional way of applying events/commands :
 
-    public class RegisterAccount
+    public class AccountRegistered
     {
        string OwnerName {get;set;}
        string AccountNumber {get;set;}
        string AccountId {get;set;}
     }
 
-    Apply(new RegisterAccount {
+    Apply(new AccountRegistered {
       OwnerName = "Tom Janssens",
       AccountNumber="123-456789-01",
       AccountId="account/1"
@@ -22,7 +22,7 @@ It is a CQRS example that supports both the conventional way of applying events/
 or through method calls (without event or command classes classes, using dynamic dispatching):
 
 
-    ApplyEvent.RegisterAccount(
+    ApplyEvent.AccountRegistered(
        OwnerName: "Tom Janssens",
        AccountNumber:"123-456789-01",
        AccountId:"account/1"
