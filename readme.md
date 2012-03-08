@@ -6,6 +6,13 @@ essence are not necessary to reach your goal).
 
 It is a CQRS example that supports both the conventional way of applying events/commands :
 
+    public class RegisterAccount
+    {
+       string OwnerName {get;set;}
+       string AccountNumber {get;set;}
+       string AccountId {get;set;}
+    }
+
     Apply(new RegisterAccount {
       OwnerName = "Tom Janssens",
       AccountNumber="123-456789-01",
