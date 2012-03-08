@@ -19,7 +19,7 @@ It is a CQRS example that supports both the conventional way of applying events/
       AccountId="account/1"
     });
 
-or through method calls (without event classes, using dynamic dispatching):
+or through method calls (without event or command classes classes, using dynamic dispatching):
 
 
     ApplyEvent.RegisterAccount(
