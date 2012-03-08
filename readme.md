@@ -24,10 +24,10 @@ or through method calls (without event or command classes classes, using dynamic
 
     ApplyEvent.AccountRegistered(
        OwnerName: "Tom Janssens",
-       AccountNumber:"123-456789-01",
-       AccountId:"account/1"
+       AccountNumber: "123-456789-01",
+       AccountId: "account/1"
     );
 
 This allows you to use messaging without explicitly declaring message classes....
 
-Handle with care, as it migh blow up in your face !!!
+Handle with care, as it might just as well blow up in your face !!!
