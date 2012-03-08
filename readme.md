@@ -5,19 +5,19 @@ The name is a reference to the commonly know term Yak Shaving (i.e. doing things
 essence are not necessary to reach your goal).
 
 It is a CQRS example that supports both the conventional way of applying events/commands :
-'''
+```c#
 Apply(new RegisterAccount {
   OwnerName = "Tom Janssens",
   AccountNumber="123-456789-01",
   AccountId="account/1"
 });
-'''
+```
 
 or through method calls (without event classes, using dynamic dispatching):
 
-'''
+```c#
 ApplyEvent.RegisterAccount(OwnerName: "Tom Janssens", AccountNumber:"123-456789-01", AccountId: "account/1");
-'''
+```
 
 This allows you to use messaging without explicitly declaring message classes....
 
