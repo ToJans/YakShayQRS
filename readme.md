@@ -8,9 +8,9 @@ It is a CQRS example that supports both the conventional way of applying events/
 
     public class AccountRegistered
     {
-       string OwnerName {get;set;}
-       string AccountNumber {get;set;}
-       string AccountId {get;set;}
+       public string OwnerName {get;set;}
+       public string AccountNumber {get;set;}
+       public string AccountId {get;set;}
     }
 
     Apply(new AccountRegistered {
