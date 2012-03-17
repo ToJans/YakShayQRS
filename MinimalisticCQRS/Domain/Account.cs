@@ -4,7 +4,7 @@ namespace MinimalisticCQRS.Domain
 {
     public class Account : AccountState
     {
-        public Account() : base(null) { } // required for Castle.DynamicProxy
+        public Account() : base(null) { } // dirty hack required for Castle.DynamicProxy
 
         public Account(string AccountId) : base(AccountId) { }
 
@@ -26,7 +26,7 @@ namespace MinimalisticCQRS.Domain
             Guard.Against(IsEnabled, "You can not withdraw from an unregistered account");
             Guard.Against(Amount < 0, "You can not withdraw an amount < 0");
             Guard.Against(Amount > Balance, "You can not withdraw an amount larger then the current balance");
-            AmountWithdrawn(Amount: Amount);
+            AmountWithdrawn(Amount);
         }
 
         public void TransferAmount(decimal Amount, string TargetAccountId)
@@ -34,7 +34,7 @@ namespace MinimalisticCQRS.Domain
             Guard.Against(IsEnabled == false, "You can not transfer from an unregistered account");
             Guard.Against(Amount < 0, "You can not transfer an amount < 0");
             Guard.Against(Amount > Balance, "You can not transfer an amount larger then the current balance");
-            AmountWithdrawn(Amount: Amount);
+            AmountWithdrawn(Amount);
             TransferProcessedOnSource(Amount, TargetAccountId);
         }
 
@@ -42,7 +42,7 @@ namespace MinimalisticCQRS.Domain
         {
             if (IsEnabled)
             {
-                AmountDeposited(Amount: Amount);
+                AmountDeposited(Amount);
                 TransferCompleted(Amount, SourceAccountId);
             }
             else
