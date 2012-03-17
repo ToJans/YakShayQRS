@@ -2,77 +2,87 @@
 
 namespace MinimalisticCQRS.Domain
 {
-    public class Account : AR
+    public class Account : AccountState
     {
-        decimal Balance = 0;
-        bool IsEnabled = false;
+        public Account() : base(null) { } // required for Castle.DynamicProxy
+
+        public Account(string AccountId) : base(AccountId) { }
 
         public void RegisterAccount(string OwnerName, string AccountNumber)
         {
             if (IsEnabled) return;
-            ApplyEvent.AccountRegistered(OwnerName: OwnerName, AccountNumber: AccountNumber, AccountId: Id);
+            AccountRegistered(OwnerName, AccountNumber);
         }
 
         public void DepositCash(decimal Amount)
         {
-            Guard.Against(!IsEnabled, "You can not deposit into an unregistered account");
+            Guard.Against(IsEnabled, "You can not deposit into an unregistered account");
             Guard.Against(Amount < 0, "You can not deposit an amount < 0");
-            // we support both instance classes and direct calls to emit events
-            //Apply.AmountDeposited(Amount:Amount, AccountId: Id);
-            Apply(new Events.AmountDeposited { AccountId = Id, Amount = Amount });
+            AmountDeposited(Amount);
         }
 
         public void WithdrawCash(decimal Amount)
         {
-            Guard.Against(!IsEnabled, "You can not withdraw from an unregistered account");
+            Guard.Against(IsEnabled, "You can not withdraw from an unregistered account");
             Guard.Against(Amount < 0, "You can not withdraw an amount < 0");
             Guard.Against(Amount > Balance, "You can not withdraw an amount larger then the current balance");
-            ApplyEvent.AmountWithdrawn(Amount: Amount, AccountId: Id);
+            AmountWithdrawn(Amount: Amount);
         }
 
         public void TransferAmount(decimal Amount, string TargetAccountId)
         {
-            Guard.Against(!IsEnabled, "You can not transfer from an unregistered account");
+            Guard.Against(IsEnabled == false, "You can not transfer from an unregistered account");
             Guard.Against(Amount < 0, "You can not transfer an amount < 0");
             Guard.Against(Amount > Balance, "You can not transfer an amount larger then the current balance");
-            ApplyEvent.AmountWithdrawn(Amount: Amount, AccountId: Id);
-            ApplyEvent.TransferProcessedOnSource(Amount, TargetAccountId, AccountId: Id);
+            AmountWithdrawn(Amount: Amount);
+            TransferProcessedOnSource(Amount, TargetAccountId);
         }
 
         public void ProcessTransferOnTarget(decimal Amount, string SourceAccountId)
         {
             if (IsEnabled)
             {
-                ApplyEvent.AmountDeposited(Amount: Amount, AccountId: Id);
-                ApplyEvent.TransferCompleted(Amount, SourceAccountId, AccountId: Id);
+                AmountDeposited(Amount: Amount);
+                TransferCompleted(Amount, SourceAccountId);
             }
             else
             {
-                ApplyEvent.TransferFailedOnTarget("You can not transfer to an unregistered account", Amount, SourceAccountId, AccountId: Id);
+                TransferFailedOnTarget("You can not transfer to an unregistered account", Amount, SourceAccountId);
             }
         }
 
         public void CancelTransfer(string Reason, decimal Amount, string TargetAccountId)
         {
-            ApplyEvent.AmountDeposited(Amount: Amount, AccountId: Id);
-            ApplyEvent.TransferCanceled(Reason, Amount, TargetAccountId, AccountId: Id);
+            AmountDeposited(Amount);
+            TransferCanceled(Reason, Amount, TargetAccountId);
+        }
+    }
+
+    public class AccountState
+    {
+        public string Id { get; private set; }
+
+        public decimal Balance { get; private set; }
+
+        public bool IsEnabled { get; private set; }
+
+        public AccountState(string AccountId)
+        {
+            this.Id = AccountId;
         }
 
-        // events
-        private void OnAccountRegistered(string OwnerName)
-        {
-            Balance = 0;
-            IsEnabled = true;
-        }
+        public virtual void AccountRegistered(string OwnerName, string AccountNumber) { Balance = 0; IsEnabled = true; }
 
-        private void OnAmountDeposited(decimal Amount)
-        {
-            Balance += Amount;
-        }
+        public virtual void AmountDeposited(decimal Amount) { Balance += Amount; }
 
-        private void OnAmountWithdrawn(decimal Amount)
-        {
-            Balance -= Amount;
-        }
+        public virtual void AmountWithdrawn(decimal Amount) { Balance -= Amount; }
+
+        public virtual void TransferProcessedOnSource(decimal Amount, string TargetAccountId) { }
+
+        public virtual void TransferCompleted(decimal Amount, string SourceAccountId) { }
+
+        public virtual void TransferFailedOnTarget(string p, decimal Amount, string SourceAccountId) { }
+
+        public virtual void TransferCanceled(string Reason, decimal Amount, string TargetAccountId) { }
     }
 }

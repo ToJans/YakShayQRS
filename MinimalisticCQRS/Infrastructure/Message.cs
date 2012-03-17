@@ -2,11 +2,10 @@
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
-using System.Reflection;
 
 namespace MinimalisticCQRS.Infrastructure
 {
-    public class Message
+    public class Message : DynamicObject
     {
         public IEnumerable<KeyValuePair<string, object>> Parameters;
         public String MethodName;
@@ -36,23 +35,12 @@ namespace MinimalisticCQRS.Infrastructure
                 .Union(msg.GetType().GetFields().Select(x => new KeyValuePair<string, object>(x.Name, x.GetValue(msg))));
         }
 
-        public void InvokeOnInstanceIfPossible(object instance, string prefix = "")
+        public Message(Action<dynamic> a)
         {
-            var mi = instance.GetType().GetMethod(prefix + MethodName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (mi == null && prefix == "")
-            {
-                // maybe it is an event (i.e. prefixed with "On")
-                InvokeOnInstanceIfPossible(instance, "On");
-                return;
-            }
-            if (mi == null)
-                return;
-            var pars = mi.GetParameters()
-                .Select((x, i) => Parameters
-                    .Where(y => y.Key == i.ToString() || y.Key == x.Name)
-                    .Select(y => y.Value).FirstOrDefault())
-                .ToArray();
-            mi.Invoke(instance, pars);
+            var msg = new Message();
+            a(msg);
+            this.MethodName = msg.MethodName;
+            this.Parameters = msg.Parameters;
         }
 
         public override int GetHashCode()
@@ -79,6 +67,15 @@ namespace MinimalisticCQRS.Infrastructure
         public static bool operator !=(Message m1, Message m2)
         {
             return !(m1 == m2);
+        }
+
+        public override bool TryInvokeMember(InvokeMemberBinder binder, object[] args, out object result)
+        {
+            var msg = new Message(binder, args);
+            this.MethodName = msg.MethodName;
+            this.Parameters = msg.Parameters;
+            result = msg;
+            return true;
         }
     }
 }

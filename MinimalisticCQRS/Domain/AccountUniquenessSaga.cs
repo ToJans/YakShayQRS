@@ -9,11 +9,8 @@ namespace MinimalisticCQRS.Domain
     // resolve the remainder by manual intervention)
     public class AccountUniquenessSaga
     {
-        dynamic bus;
-
-        public AccountUniquenessSaga(dynamic bus)
+        public AccountUniquenessSaga()
         {
-            this.bus = bus;
         }
 
         List<string> RegisteredAccountNumbers = new List<string>();
@@ -24,13 +21,17 @@ namespace MinimalisticCQRS.Domain
         }
 
         // Might fail due to eventual consistency
-        void OnAccountRegistered(string OwnerName, string AccountNumber, string AccountId)
+        public void AccountRegistered(string OwnerName, string AccountNumber, string AccountId)
         {
             if (RegisteredAccountNumbers.Contains(AccountNumber))
                 // would post an email to the service desk for example
-                bus.ReportIssueToBackoffice("Account registration", "Duplicate AccountNumber", new {OwnerName,AccountNumber,AccountId }); 
+                ReportIssueToBackoffice("Account registration", "Duplicate AccountNumber", new { OwnerName, AccountNumber, AccountId });
             else
                 RegisteredAccountNumbers.Add(AccountNumber);
+        }
+
+        public virtual void ReportIssueToBackoffice(string Process, string Error, object data)
+        {
         }
     }
 }

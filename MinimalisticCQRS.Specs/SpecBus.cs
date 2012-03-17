@@ -9,20 +9,15 @@ namespace MinimalisticCQRS.Specs
 {
     public class SpecBus : MiniVan
     {
+        List<Message> GivenEvents = new List<Message>();
         public readonly List<Message> ResultingEvents = new List<Message>();
 
-        protected Verifier verifier;
-
-        public override void Apply(Message msg)
-        {
-            ResultingEvents.Add(msg);
-            base.Apply(msg);
-        }
+        protected MethodCallConverter verifier;
 
         public SpecBus(MiniVanRegistry mvr)
             : base(mvr)
         {
-            verifier = new Verifier(ResultingEvents);
+            verifier = new MethodCallConverter(ResultingEvents);
         }
 
         public void GivenEvent(Action<dynamic> a)
@@ -84,9 +79,9 @@ namespace MinimalisticCQRS.Specs
             verifier.ThenNot(@event);
         }
 
-        protected class Verifier : DynamicObject
+        protected class MethodCallConverter : DynamicObject
         {
-            public Verifier(List<Message> input)
+            public MethodCallConverter(List<Message> input)
             {
                 this.input = input;
             }

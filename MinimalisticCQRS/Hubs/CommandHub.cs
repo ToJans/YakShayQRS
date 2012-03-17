@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
+﻿using MinimalisticCQRS.Infrastructure;
 using SignalR.Hubs;
-using MinimalisticCQRS.Infrastructure;
 
 namespace MinimalisticCQRS.Hubs
 {
@@ -33,7 +29,7 @@ namespace MinimalisticCQRS.Hubs
 
         public void TransferAmount(decimal Amount, string TargetAccountId, string AccountId)
         {
-            bus.TransferAmount(Amount, TargetAccountId, AccountId:AccountId);
+            bus.TransferAmount(Amount, TargetAccountId, AccountId: AccountId);
         }
 
         // commands don't need to be executed by AR if they are irrelevant to the domain
@@ -44,6 +40,5 @@ namespace MinimalisticCQRS.Hubs
                 message = "ZOMG!!! I have no idea what to say, so I'll just say this stuff has lots of awesomesauce";
             bus.MessageShared(username, message);
         }
-
     }
 }

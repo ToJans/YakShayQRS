@@ -1,23 +1,23 @@
-﻿
-namespace MinimalisticCQRS.Domain
+﻿namespace MinimalisticCQRS.Domain
 {
     public class AccountTransferSaga
     {
-        private dynamic bus;
-
-        public AccountTransferSaga(dynamic bus)
+        public void TransferProcessedOnSource(decimal Amount, string TargetAccountId, string AccountId)
         {
-            this.bus = bus;
+            ProcessTransferOnTarget(Amount, SourceAccountId: AccountId, AccountId: TargetAccountId);
         }
 
-        public void OnTransferProcessedOnSource(decimal Amount, string TargetAccountId, string AccountId)
+        public virtual void ProcessTransferOnTarget(decimal Amount, string SourceAccountId, string AccountId)
         {
-            bus.ProcessTransferOnTarget(Amount, SourceAccountId: AccountId, AccountId: TargetAccountId);
         }
 
-        public void OnTransferFailedOnTarget(string Reason, decimal Amount, string SourceAccountId, string AccountId)
+        public void TransferFailedOnTarget(string Reason, decimal Amount, string SourceAccountId, string AccountId)
         {
-            bus.CancelTransfer(Reason,Amount, TargetAccountId:AccountId, AccountId: SourceAccountId);
+            CancelTransfer(Reason, Amount, TargetAccountId: AccountId, AccountId: SourceAccountId);
+        }
+
+        public virtual void CancelTransfer(string Reason, decimal Amount, string TargetAccountId, string AccountId)
+        {
         }
     }
 }

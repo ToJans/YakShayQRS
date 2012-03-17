@@ -1,56 +1,99 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace MinimalisticCQRS.Infrastructure
 {
     public class MiniVanRegistry
     {
-        Dictionary<Type, string> RegisteredARTypeIdNames = new Dictionary<Type, string>();
-
-        List<object> NonArInstances = new List<object>();
-
-        List<AR> ARInstances = new List<AR>();
-
-        public void RegisterArType<T>() where T : AR
+        public class ResolvedInstance
         {
-            RegisteredARTypeIdNames[typeof(T)] = typeof(T).Name + "Id";
-        }
+            public object instance;
+            public Dictionary<string, object> CtorPars;
+            public Predicate<Message> CanHandle;
 
-        public void RegisterNonArInstance(params object[] instances)
-        {
-            NonArInstances.AddRange(instances);
-        }
-
-        public IEnumerable<object> InstancesForMessage(Message msg)
-        {
-            foreach (var pn in msg.Parameters)
+            public void InvokeOnInstance(Message m, Func<string, Type, dynamic> Resolver, Action<Message> LogMessage, bool ThrowWhenNotFound = false)
             {
-                foreach (var mn in RegisteredARTypeIdNames.Where(x => x.Value == pn.Key))
+                if (!CanHandle(m))
                 {
-                    var ar = ResolveAR(mn.Key, pn.Value.ToString());
-                    if (ar != null)
-                        yield return ar;
+                    if (ThrowWhenNotFound)
+                        throw new InvalidOperationException("Unable to exec message");
+                    else
+                        return;
                 }
+                var wrappedresolver = new MessageResolverMapper(m, Resolver);
+                var mi = methodInfos[m.MethodName];
+                var pars = mi.GetParameters().Select(x => wrappedresolver.Resolve(x.Name, x.ParameterType)).ToArray();
+                var proxy = ProxyHackery.GetProxy(instance, x =>
+                {
+                    x.Parameters = x.Parameters.Union(CtorPars.Select(y => new KeyValuePair<string, object>(y.Key, y.Value)));
+                    if (!mi.IsVirtual)
+                        LogMessage(x);
+                });
+                mi.Invoke(proxy, pars);
             }
 
-            foreach (var c in NonArInstances)
+            public Dictionary<string, MethodInfo> methodInfos { get; set; }
+        }
+
+        protected class RegisteredType
+        {
+            Type T;
+            ConstructorInfo longestCtor;
+            Dictionary<string, MethodInfo> methodinfos = new Dictionary<string, MethodInfo>();
+
+            public ResolvedInstance CreateInstance(Message msg, Func<string, Type, dynamic> Resolver)
             {
-                yield return c;
+                var wrappedresolver = new MessageResolverMapper(msg, Resolver);
+                var pars = longestCtor.GetParameters().Select(x => wrappedresolver.Resolve(x.Name, x.ParameterType)).ToArray();
+                var i = longestCtor.Invoke(pars);
+                return new ResolvedInstance
+                {
+                    instance = i,
+                    methodInfos = methodinfos,
+                    CanHandle = m =>
+                    {
+                        return
+                            i.GetType() == T &&
+                            methodinfos.ContainsKey(m.MethodName) &&
+                            wrappedresolver.ParametersResolvedFromMessage.All(x => m.Parameters.Any(y => y.Key == x.Key && y.Value == x.Value));
+                    },
+                    CtorPars = wrappedresolver.ParametersResolvedFromMessage
+                };
+            }
+
+            public RegisteredType(Type t)
+            {
+                this.T = t;
+                longestCtor = t.GetConstructors().OrderByDescending(x => x.GetParameters().Length).FirstOrDefault();
+                methodinfos = t.GetMethods().Where(x => x.ReturnType == typeof(void)).ToDictionary(x => x.Name);
             }
         }
 
-        protected virtual AR ResolveAR(Type type, string id)
+        Dictionary<Type, RegisteredType> RegisteredTypes = new Dictionary<Type, RegisteredType>();
+
+        public void Register<T>()
         {
-            var ar = ARInstances.Where(x => x.Id == id && x.GetType() == type).FirstOrDefault();
-            if (ar == null)
+            Register(typeof(T));
+        }
+
+        public void Register(Type T)
+        {
+            if (RegisteredTypes.ContainsKey(T))
+                return;
+            RegisteredTypes.Add(T, new RegisteredType(T));
+        }
+
+        public IEnumerable<ResolvedInstance> ResolveInstancesForMessage(Message msg, Func<string, Type, dynamic> Resolve)
+        {
+            foreach (var t in RegisteredTypes)
             {
-                ar = (AR)Activator.CreateInstance(type);
-                ar.Id = id;
-                ARInstances.Add(ar);
+                var instr = t.Value.CreateInstance(msg, Resolve);
+                if (instr == null)
+                    continue;
+                yield return instr;
             }
-            return ar;
         }
     }
-
 }

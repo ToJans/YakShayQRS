@@ -1,5 +1,6 @@
-﻿using System.Dynamic;
-using System.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.Dynamic;
 
 namespace MinimalisticCQRS.Infrastructure
 {
@@ -12,33 +13,24 @@ namespace MinimalisticCQRS.Infrastructure
             this.Registry = Registry;
         }
 
-        public virtual void Apply(Message msg)
+        public virtual IEnumerable<Message> Delegate(Message msg, Func<string, Type, dynamic> Resolve, IEnumerable<Message> History)
         {
-            var instances = Registry.InstancesForMessage(msg).ToArray();
-            // initialize AR event handlers
-            foreach (var inst in instances.Where(x => x is AR))
+            // invoke "Can" before invoking the message
+            foreach (var t in Registry.ResolveInstancesForMessage(msg, Resolve))
             {
-                (inst as AR).ApplyEvent = this;
-                (inst as AR).Apply = @event => Handle(@event);
+                foreach (var hm in History)
+                    t.InvokeOnInstance(hm, Resolve, x => { });
+                t.InvokeOnInstance(new Message("Can" + msg.MethodName, msg.Parameters), Resolve, x => { });
             }
-            foreach (var inst in instances)
-                msg.InvokeOnInstanceIfPossible(inst, "Can");
-            foreach (var inst in instances)
-                msg.InvokeOnInstanceIfPossible(inst);
-        }
-
-        public virtual void Handle(object msg)
-        {
-            var m = (msg as Message) ?? new Message(msg);
-            Apply(m);
-        }
-
-        public override bool TryInvokeMember(InvokeMemberBinder binder, object[] args, out object result)
-        {
-            var msg = new Message(binder, args);
-            Apply(msg);
-            result = null;
-            return true;
+            // invoke the message
+            var localmessages = new List<Message>();
+            foreach (var t in Registry.ResolveInstancesForMessage(msg, Resolve))
+            {
+                foreach (var hm in History)
+                    t.InvokeOnInstance(hm, Resolve, x => { });
+                t.InvokeOnInstance(msg, Resolve, x => localmessages.Add(x));
+            }
+            return localmessages;
         }
     }
 }
