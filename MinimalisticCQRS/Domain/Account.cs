@@ -16,23 +16,23 @@ namespace MinimalisticCQRS.Domain
 
         public void DepositCash(decimal Amount)
         {
-            Guard.Against(IsEnabled, "You can not deposit into an unregistered account");
-            Guard.Against(Amount < 0, "You can not deposit an amount < 0");
+            Guard.That(IsEnabled, "You can not deposit into an unregistered account");
+            Guard.That(Amount > 0, "Your deposit amount has to be bigger then 0");
             AmountDeposited(Amount);
         }
 
         public void WithdrawCash(decimal Amount)
         {
-            Guard.Against(IsEnabled, "You can not withdraw from an unregistered account");
-            Guard.Against(Amount < 0, "You can not withdraw an amount < 0");
+            Guard.That(IsEnabled, "You can not withdraw from an unregistered account");
+            Guard.That(Amount > 0, "Your withdraw amount has to be bigger then 0");
             Guard.Against(Amount > Balance, "You can not withdraw an amount larger then the current balance");
             AmountWithdrawn(Amount);
         }
 
         public void TransferAmount(decimal Amount, string TargetAccountId)
         {
-            Guard.Against(IsEnabled == false, "You can not transfer from an unregistered account");
-            Guard.Against(Amount < 0, "You can not transfer an amount < 0");
+            Guard.That(IsEnabled, "You can not transfer from an unregistered account");
+            Guard.That(Amount > 0, "Your transfer amount has to be bigger then 0");
             Guard.Against(Amount > Balance, "You can not transfer an amount larger then the current balance");
             AmountWithdrawn(Amount);
             TransferProcessedOnSource(Amount, TargetAccountId);

@@ -13,7 +13,7 @@ namespace MinimalisticCQRS.Infrastructure
             public Dictionary<string, object> CtorPars;
             public Predicate<Message> CanHandle;
 
-            public void InvokeOnInstance(Message m, Func<string, Type, dynamic> Resolver, Action<Message> LogMessage, bool ThrowWhenNotFound = false)
+            public void InvokeOnInstance(Message m, Func<string, Type, dynamic> Resolver, bool ThrowWhenNotFound = false)
             {
                 if (!CanHandle(m))
                 {
@@ -25,16 +25,12 @@ namespace MinimalisticCQRS.Infrastructure
                 var wrappedresolver = new MessageResolverMapper(m, Resolver);
                 var mi = methodInfos[m.MethodName];
                 var pars = mi.GetParameters().Select(x => wrappedresolver.Resolve(x.Name, x.ParameterType)).ToArray();
-                var proxy = ProxyHackery.GetProxy(instance, x =>
-                {
-                    x.Parameters = x.Parameters.Union(CtorPars.Select(y => new KeyValuePair<string, object>(y.Key, y.Value)));
-                    if (!mi.IsVirtual)
-                        LogMessage(x);
-                });
-                mi.Invoke(proxy, pars);
+                mi.Invoke(instance, pars);
             }
 
             public Dictionary<string, MethodInfo> methodInfos { get; set; }
+
+            public Action<Message> LogMessage { get; set; }
         }
 
         protected class RegisteredType
@@ -43,12 +39,13 @@ namespace MinimalisticCQRS.Infrastructure
             ConstructorInfo longestCtor;
             Dictionary<string, MethodInfo> methodinfos = new Dictionary<string, MethodInfo>();
 
-            public ResolvedInstance CreateInstance(Message msg, Func<string, Type, dynamic> Resolver)
+            public ResolvedInstance CreateInstance(Message msg, Func<string, Type, dynamic> Resolver, Action<Message> LogMessage)
             {
                 var wrappedresolver = new MessageResolverMapper(msg, Resolver);
                 var pars = longestCtor.GetParameters().Select(x => wrappedresolver.Resolve(x.Name, x.ParameterType)).ToArray();
                 var i = longestCtor.Invoke(pars);
-                return new ResolvedInstance
+
+                var result = new ResolvedInstance
                 {
                     instance = i,
                     methodInfos = methodinfos,
@@ -59,8 +56,16 @@ namespace MinimalisticCQRS.Infrastructure
                             methodinfos.ContainsKey(m.MethodName) &&
                             wrappedresolver.ParametersResolvedFromMessage.All(x => m.Parameters.Any(y => y.Key == x.Key && y.Value == x.Value));
                     },
-                    CtorPars = wrappedresolver.ParametersResolvedFromMessage
+                    CtorPars = wrappedresolver.ParametersResolvedFromMessage,
+                    LogMessage = LogMessage
                 };
+                result.instance = ProxyHackery.GetProxy(i, x =>
+                {
+                    x.Parameters = x.Parameters.Union(result.CtorPars.Select(y => new KeyValuePair<string, object>(y.Key, y.Value)));
+                    if (!result.methodInfos[x.MethodName].IsVirtual)
+                        LogMessage(x);
+                });
+                return result;
             }
 
             public RegisteredType(Type t)
@@ -85,11 +90,12 @@ namespace MinimalisticCQRS.Infrastructure
             RegisteredTypes.Add(T, new RegisteredType(T));
         }
 
-        public IEnumerable<ResolvedInstance> ResolveInstancesForMessage(Message msg, Func<string, Type, dynamic> Resolve)
+        public IEnumerable<ResolvedInstance> ResolveInstancesForMessage(Message msg, Func<string, Type, dynamic> Resolve, Action<Message> LogMessage)
         {
             foreach (var t in RegisteredTypes)
             {
-                var instr = t.Value.CreateInstance(msg, Resolve);
+                var instr = t.Value.CreateInstance(msg, Resolve, LogMessage);
+
                 if (instr == null)
                     continue;
                 yield return instr;

@@ -16,21 +16,25 @@ namespace MinimalisticCQRS.Infrastructure
         public virtual IEnumerable<Message> Delegate(Message msg, Func<string, Type, dynamic> Resolve, IEnumerable<Message> History)
         {
             // invoke "Can" before invoking the message
-            foreach (var t in Registry.ResolveInstancesForMessage(msg, Resolve))
+            foreach (var t in Registry.ResolveInstancesForMessage(msg, Resolve, x => { }))
             {
                 foreach (var hm in History)
-                    t.InvokeOnInstance(hm, Resolve, x => { });
-                t.InvokeOnInstance(new Message("Can" + msg.MethodName, msg.Parameters), Resolve, x => { });
+                    t.InvokeOnInstance(hm, Resolve);
+                t.InvokeOnInstance(new Message("Can" + msg.MethodName, msg.Parameters), Resolve);
             }
             // invoke the message
             var localmessages = new List<Message>();
-            foreach (var t in Registry.ResolveInstancesForMessage(msg, Resolve))
+            var emittedmessages = new List<Message>();
+            foreach (var t in Registry.ResolveInstancesForMessage(msg, Resolve, x => localmessages.Add(x)))
             {
                 foreach (var hm in History)
-                    t.InvokeOnInstance(hm, Resolve, x => { });
-                t.InvokeOnInstance(msg, Resolve, x => localmessages.Add(x));
+                    t.InvokeOnInstance(hm, Resolve);
+                localmessages.Clear();
+                t.InvokeOnInstance(msg, Resolve);
+
+                emittedmessages.AddRange(localmessages);
             }
-            return localmessages;
+            return emittedmessages;
         }
     }
 }

@@ -10,7 +10,6 @@ namespace MinimalisticCQRS.Infrastructure
 
         public VirtualMethodCallLogger(Action<Message> EmitMessage)
         {
-            // TODO: Complete member initialization
             this.EmitMessage = EmitMessage;
         }
 

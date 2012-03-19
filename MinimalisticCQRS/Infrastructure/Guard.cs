@@ -8,6 +8,10 @@ namespace MinimalisticCQRS.Infrastructure
         {
             if (assertion) throw new InvalidOperationException(message);
         }
-    }
 
+        public static void That(bool assertion, string message)
+        {
+            if (!assertion) throw new InvalidOperationException(message);
+        }
+    }
 }
