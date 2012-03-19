@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace YakShayQRS
 {
-    public class EventQueue
+    public class MessageQueue
     {
         public List<Message> msgs = new List<Message>();
 

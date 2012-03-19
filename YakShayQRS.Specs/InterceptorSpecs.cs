@@ -40,7 +40,7 @@ namespace YakShayQRS.Specs
         {
             var SUT = new YakShayBus();
             SUT.RegisterType<SomeTestClass>();
-            var es = new EventQueue();
+            var mq = new MessageQueue();
             var msg = new Message("MethodToInvoke", new
             {
                 SomePartOfTheUID = "A",
@@ -49,10 +49,10 @@ namespace YakShayQRS.Specs
                 SomeString = "ABC"
             });
 
-            SUT.Handle(msg, es.Add);
+            SUT.Handle(msg, mq.Add);
 
-            es.msgs.Count.ShouldBe(1);
-            es.msgs.First().ToFriendlyString().ShouldBe(new Message("OnMethodWasInvoked", new
+            mq.msgs.Count.ShouldBe(1);
+            mq.msgs.First().ToFriendlyString().ShouldBe(new Message("OnMethodWasInvoked", new
             {
                 SomePartOfTheUID = "A",
                 AnotherPartOfTheUID = "B",
@@ -62,8 +62,8 @@ namespace YakShayQRS.Specs
 
             var ArInstance = new SomeTestClass { SomePartOfTheUID = "A", AnotherPartOfTheUID = "B" };
             var AnotherArInstance = new SomeTestClass { SomePartOfTheUID = "X", AnotherPartOfTheUID = "Y" };
-            SUT.ApplyHistory(ArInstance, es.Filter);
-            SUT.ApplyHistory(AnotherArInstance, es.Filter);
+            SUT.ApplyHistory(ArInstance, mq.Filter);
+            SUT.ApplyHistory(AnotherArInstance, mq.Filter);
 
             ArInstance.HasMethodBeenCalled.ShouldBe(true);
             AnotherArInstance.HasMethodBeenCalled.ShouldBe(false);
