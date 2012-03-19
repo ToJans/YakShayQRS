@@ -81,7 +81,7 @@ namespace YakShayQRS.Specs
 
             protected virtual void OnTransferProcessedOnTarget(string SourceAccountId, decimal Amount) { Balance += Amount; }
 
-            protected virtual void OnTransferFailedOnTarget(string SourceAccountId, decimal Amount) { Balance += Amount; }
+            protected virtual void OnTransferFailedOnTarget(string SourceAccountId, decimal Amount) { }
 
             protected virtual void OnTransactionCancelled(string what, string reason) { }
         }
