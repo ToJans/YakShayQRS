@@ -128,12 +128,13 @@ namespace YakShayQRS.Specs
             SUT.HandleUntilAllConsumed(Message.FromAction(x => x.DepositAmount(AccountId: "account/1", Amount: 126m)), mq.Add, mq.Filter);
             SUT.HandleUntilAllConsumed(Message.FromAction(x => x.DepositAmount(AccountId: "account/2", Amount: 10m)), mq.Add, mq.Filter);
             SUT.HandleUntilAllConsumed(Message.FromAction(x => x.Transfer(AccountId: "account/1", TargetAccountId: "account/2", Amount: 26m)), mq.Add, mq.Filter);
+            SUT.HandleUntilAllConsumed(Message.FromAction(x => x.WithdrawAmount(AccountId: "account/2", Amount: 10m)), mq.Add, mq.Filter);
 
             var bal = new AccountBalances();
             SUT.ApplyHistory(bal, mq.Filter);
             bal.Balances.Count.ShouldBe(2);
             bal.Balances["account/1"].ShouldBe(100m);
-            bal.Balances["account/2"].ShouldBe(36m);
+            bal.Balances["account/2"].ShouldBe(26m);
         }
     }
 }
