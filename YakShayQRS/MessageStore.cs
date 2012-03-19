@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace YakShayQRS
 {
-    public class MessageQueue
+    public class MessageStore
     {
         public List<Message> msgs = new List<Message>();
 
