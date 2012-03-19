@@ -28,20 +28,17 @@ namespace YakShayQRS
         {
             var queue = new List<Message>();
             queue.Add(msg);
-            var toEmit = new List<Message>();
             while (queue.Any())
             {
                 var newmsgs = new List<Message>();
                 Handle(queue.First(), x => newmsgs.Add(x), GetHistory, Resolver);
                 foreach (var m in newmsgs)
                 {
-                    toEmit.Add(m);
+                    EmitMessage(m);
                     queue.Add(m);
                 }
                 queue.RemoveAt(0);
             }
-            foreach (var em in toEmit)
-                EmitMessage(em);
         }
 
         public void Handle(Message msg, Action<Message> EmitMessage, Func<IEnumerable<KeyValuePair<string, object>>, IEnumerable<Message>> GetHistory = null, Func<string, Type, object> Resolver = null)
@@ -52,7 +49,7 @@ namespace YakShayQRS
             }
             foreach (var t in RegisteredTypes.Values)
             {
-                var logger = t.GetInstanceIfMessageAppliesToType(msg, true);
+                var logger = t.GetInstanceIfMessageAppliesToType(msg, false);
                 if (logger == null) continue;
                 var pars = msg.Parameters.Where(x => t.UniqueIdPropertySetters.ContainsKey(x.Key));
                 if (GetHistory != null)
@@ -93,11 +90,11 @@ namespace YakShayQRS
                 }
             }
 
-            public VirtualMethodCallLogger GetInstanceIfMessageAppliesToType(Message msg, bool NonVirtualMethodsOnly = false)
+            public VirtualMethodCallLogger GetInstanceIfMessageAppliesToType(Message msg, bool applyToVirtual = false)
             {
                 if (!MethodInfos.ContainsKey(msg.MethodName))
                     return null;
-                if (NonVirtualMethodsOnly && MethodInfos[msg.MethodName].IsVirtual)
+                if (applyToVirtual != MethodInfos[msg.MethodName].IsVirtual)
                     return null;
                 var requiredFields = UniqueIdPropertySetters.Keys;
                 if (!requiredFields.All(x => msg.Parameters.Any(y => y.Key == x)))
@@ -112,7 +109,7 @@ namespace YakShayQRS
                 return res;
             }
 
-            public void InvokeOnInstance(object instance, Message m, Func<string, Type, object> Resolver, bool ThrowWhenNotFound = false, bool virtualonly = false)
+            public void InvokeOnInstance(object instance, Message m, Func<string, Type, object> Resolver, bool ThrowWhenNotFound = false, bool applyToVirtual = false)
             {
                 Func<string, Type, object> wrappedresolver = (name, t) =>
                 {
@@ -122,9 +119,12 @@ namespace YakShayQRS
                     else
                         return Resolver(name, t);
                 };
-                var mi = MethodInfos[m.MethodName];
-                if (virtualonly && !mi.IsVirtual)
+                if (!MethodInfos.ContainsKey(m.MethodName) && !ThrowWhenNotFound)
                     return;
+                var mi = MethodInfos[m.MethodName];
+                if (applyToVirtual != mi.IsVirtual)
+                    return;
+
                 var pars = mi.GetParameters().Select(x => wrappedresolver(x.Name, x.ParameterType)).ToArray();
                 mi.Invoke(instance, pars);
             }
@@ -149,8 +149,7 @@ namespace YakShayQRS
                     {
                         msg.MethodName = mi.Name;
                         msg.Parameters = mi.GetParameters().Select(x => x.Name).Zip(invocation.Arguments, (n, v) => new KeyValuePair<string, object>(n, v));
-                        if (InvokingMessage.MethodName != mi.Name)
-                            EmitMessage(msg);
+                        EmitMessage(msg);
                     }
                     invocation.Proceed();
                 }
@@ -173,6 +172,8 @@ namespace YakShayQRS
                         else
                             return Resolver(name, t);
                     };
+                    if (!MethodInfos.ContainsKey(hm.MethodName))
+                        continue;
                     var mi = MethodInfos[hm.MethodName];
                     if (!mi.IsVirtual) continue;
                     var pars = mi.GetParameters().Select(x => wrappedresolver(x.Name, x.ParameterType)).ToArray();

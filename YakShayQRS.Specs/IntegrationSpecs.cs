@@ -19,72 +19,72 @@ namespace YakShayQRS.Specs
             {
                 if (IsRegistered)
                     return;
-                AccountRegistered(OwnerName);
+                OnAccountRegistered(OwnerName);
             }
 
             public void DepositAmount(decimal Amount)
             {
                 if (Amount <= 0)
-                    TransactionCancelled("Deposit", "Your amount has to be positive");
-                AmountDeposited(Amount);
+                    OnTransactionCancelled("Deposit", "Your amount has to be positive");
+                OnAmountDeposited(Amount);
             }
 
             public void WithdrawAmount(decimal Amount)
             {
                 if (Amount <= 0)
-                    TransactionCancelled("Withdraw", "Your amount has to be positive");
+                    OnTransactionCancelled("Withdraw", "Your amount has to be positive");
                 if (Amount > Balance)
-                    TransactionCancelled("Withdraw", "Your amount has to be smaller then the balance");
-                AmountWithdrawn(Amount);
+                    OnTransactionCancelled("Withdraw", "Your amount has to be smaller then the balance");
+                OnAmountWithdrawn(Amount);
             }
 
             public void Transfer(string TargetAccountId, decimal Amount)
             {
                 if (Amount <= 0)
-                    TransactionCancelled("Transfer", "Your amount has to be positive");
+                    OnTransactionCancelled("Transfer", "Your amount has to be positive");
                 if (Amount > Balance)
-                    TransactionCancelled("Transfer", "Your amount has to be smaller then the balance");
-                TransferProcessedOnSource(TargetAccountId, Amount);
+                    OnTransactionCancelled("Transfer", "Your amount has to be smaller then the balance");
+                OnTransferProcessedOnSource(TargetAccountId, Amount);
             }
 
             public void ProcessTransferOnTarget(string SourceAccountId, decimal Amount)
             {
                 if (IsRegistered)
-                    TransferProcessedOnTarget(SourceAccountId, Amount);
+                    OnTransferProcessedOnTarget(SourceAccountId, Amount);
                 else
-                    TransferFailedOnTarget(SourceAccountId, Amount);
+                    OnTransferFailedOnTarget(SourceAccountId, Amount);
             }
 
             public void CancelTransferOnSource(string TargetAccountId, decimal Amount)
             {
-                TransferCancelledOnSource(TargetAccountId, Amount);
+                OnTransferCancelledOnSource(TargetAccountId, Amount);
             }
 
-            protected virtual void AccountRegistered(string OwnerName) { IsRegistered = true; }
+            protected virtual void OnAccountRegistered(string OwnerName) { IsRegistered = true; }
 
-            protected virtual void AmountDeposited(decimal Amount) { Balance += Amount; }
+            protected virtual void OnAmountDeposited(decimal Amount) { Balance += Amount; }
 
-            protected virtual void AmountWithdrawn(decimal Amount) { Balance -= Amount; }
+            protected virtual void OnAmountWithdrawn(decimal Amount) { Balance -= Amount; }
 
-            protected virtual void TransferProcessedOnSource(string TargetAccountId, decimal Amount) { Balance -= Amount; }
+            protected virtual void OnTransferProcessedOnSource(string TargetAccountId, decimal Amount) { Balance -= Amount; }
 
-            protected virtual void TransferCancelledOnSource(string TargetAccountId, decimal Amount) { Balance += Amount; }
+            protected virtual void OnTransferCancelledOnSource(string TargetAccountId, decimal Amount) { Balance += Amount; }
 
-            protected virtual void TransferProcessedOnTarget(string SourceAccountId, decimal Amount) { Balance += Amount; }
+            protected virtual void OnTransferProcessedOnTarget(string SourceAccountId, decimal Amount) { Balance += Amount; }
 
-            protected virtual void TransferFailedOnTarget(string SourceAccountId, decimal Amount) { Balance += Amount; }
+            protected virtual void OnTransferFailedOnTarget(string SourceAccountId, decimal Amount) { Balance += Amount; }
 
-            protected virtual void TransactionCancelled(string what, string reason) { }
+            protected virtual void OnTransactionCancelled(string what, string reason) { }
         }
 
         public class AccountTransferSaga
         {
-            public void TransferProcessedOnSource(string AccountId, string TargetAccountId, decimal Amount)
+            public void OnTransferProcessedOnSource(string AccountId, string TargetAccountId, decimal Amount)
             {
                 ProcessTransferOnTarget(TargetAccountId, AccountId, Amount);
             }
 
-            public void TransferFailedOnTarget(string AccountId, string SourceAccountId, decimal Amount)
+            public void OnTransferFailedOnTarget(string AccountId, string SourceAccountId, decimal Amount)
             {
                 CancelTransferOnSource(SourceAccountId, AccountId, Amount);
             }
@@ -96,15 +96,17 @@ namespace YakShayQRS.Specs
 
         public class AccountBalances
         {
+            public AccountBalances() { }
+
             public Dictionary<string, Decimal> Balances = new Dictionary<string, decimal>();
 
-            public void AccountRegistered(string AccountId) { Balances.Add(AccountId, 0); }
+            public virtual void OnAccountRegistered(string AccountId) { Balances.Add(AccountId, 0); }
 
-            public void AmountDeposited(string AccountId, decimal Amount) { Balances[AccountId] += Amount; }
+            public virtual void OnAmountDeposited(string AccountId, decimal Amount) { Balances[AccountId] += Amount; }
 
-            public void AmountWithdrawn(string AccountId, decimal Amount) { Balances[AccountId] -= Amount; }
+            public virtual void OnAmountWithdrawn(string AccountId, decimal Amount) { Balances[AccountId] -= Amount; }
 
-            public void TransferProcessedOnTarget(string AccountId, string SourceAccountId, decimal Amount)
+            public virtual void OnTransferProcessedOnTarget(string AccountId, string SourceAccountId, decimal Amount)
             {
                 Balances[AccountId] += Amount;
                 Balances[SourceAccountId] -= Amount;

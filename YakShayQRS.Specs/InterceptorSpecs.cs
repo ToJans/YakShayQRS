@@ -10,24 +10,24 @@ namespace YakShayQRS.Specs
     {
         public class SomeTestClass
         {
-            public bool HasMethodToInterceptBeenCalled = false;
+            public bool HasMethodBeenCalled = false;
 
             public virtual string SomePartOfTheUID { get; set; }
 
             public virtual string AnotherPartOfTheUID { get; set; }
 
-            public void MethodToInvokeUsingAMessage(bool SomeFlag, string SomeString)
+            public void MethodToInvoke(bool SomeFlag, string SomeString)
             {
-                MethodWasInvoked(SomeString, 123);
+                OnMethodWasInvoked(SomeString, 123);
             }
 
-            public virtual void MethodWasInvoked(string SomeString, int AnotherInt)
+            public virtual void OnMethodWasInvoked(string SomeString, int AnotherInt)
             {
-                HasMethodToInterceptBeenCalled = true;
+                HasMethodBeenCalled = true;
             }
         }
 
-        public class MethodToInvokeUsingAMessage
+        public class MethodToInvoke
         {
             public string SomePartOfTheUID;
             public string AnotherPartOfTheUID;
@@ -40,8 +40,8 @@ namespace YakShayQRS.Specs
         {
             var SUT = new YakShayBus();
             SUT.RegisterType<SomeTestClass>();
-            var resultingMessages = new List<Message>();
-            var msg = new Message("MethodToInvokeUsingAMessage", new
+            var es = new EventQueue();
+            var msg = new Message("MethodToInvoke", new
             {
                 SomePartOfTheUID = "A",
                 AnotherPartOfTheUID = "B",
@@ -49,16 +49,24 @@ namespace YakShayQRS.Specs
                 SomeString = "ABC"
             });
 
-            SUT.Handle(msg, x => resultingMessages.Add(x));
+            SUT.Handle(msg, es.Add);
 
-            resultingMessages.Count.ShouldBe(1);
-            resultingMessages.First().ToFriendlyString().ShouldBe(new Message("MethodWasInvoked", new
+            es.msgs.Count.ShouldBe(1);
+            es.msgs.First().ToFriendlyString().ShouldBe(new Message("OnMethodWasInvoked", new
             {
                 SomePartOfTheUID = "A",
                 AnotherPartOfTheUID = "B",
                 SomeString = "ABC",
                 AnotherInt = 123
             }).ToFriendlyString());
+
+            var ArInstance = new SomeTestClass { SomePartOfTheUID = "A", AnotherPartOfTheUID = "B" };
+            var AnotherArInstance = new SomeTestClass { SomePartOfTheUID = "X", AnotherPartOfTheUID = "Y" };
+            SUT.ApplyHistory(ArInstance, es.Filter);
+            SUT.ApplyHistory(AnotherArInstance, es.Filter);
+
+            ArInstance.HasMethodBeenCalled.ShouldBe(true);
+            AnotherArInstance.HasMethodBeenCalled.ShouldBe(false);
         }
 
         [TestMethod]
@@ -67,7 +75,7 @@ namespace YakShayQRS.Specs
             var SUT = new YakShayBus();
             SUT.RegisterType<SomeTestClass>();
             var resultingMessages = new List<Message>();
-            var msg = new MethodToInvokeUsingAMessage
+            var msg = new MethodToInvoke
             {
                 SomePartOfTheUID = "A",
                 AnotherPartOfTheUID = "B",
@@ -78,7 +86,7 @@ namespace YakShayQRS.Specs
             SUT.Handle(Message.FromObject(msg), x => resultingMessages.Add(x));
 
             resultingMessages.Count.ShouldBe(1);
-            resultingMessages.First().ToFriendlyString().ShouldBe(new Message("MethodWasInvoked", new
+            resultingMessages.First().ToFriendlyString().ShouldBe(new Message("OnMethodWasInvoked", new
             {
                 SomePartOfTheUID = "A",
                 AnotherPartOfTheUID = "B",
@@ -102,11 +110,11 @@ namespace YakShayQRS.Specs
             };
 
             SUT.Handle(
-                Message.FromAction(x => x.MethodToInvokeUsingAMessage(SomePartOfTheUID: "A", AnotherPartOfTheUID: "B", SomeFlag: true, SomeString: "ABC"))
+                Message.FromAction(x => x.MethodToInvoke(SomePartOfTheUID: "A", AnotherPartOfTheUID: "B", SomeFlag: true, SomeString: "ABC"))
                 , x => resultingMessages.Add(x));
 
             resultingMessages.Count.ShouldBe(1);
-            resultingMessages.First().ToFriendlyString().ShouldBe(new Message("MethodWasInvoked", new
+            resultingMessages.First().ToFriendlyString().ShouldBe(new Message("OnMethodWasInvoked", new
             {
                 SomePartOfTheUID = "A",
                 AnotherPartOfTheUID = "B",
@@ -121,7 +129,7 @@ namespace YakShayQRS.Specs
             var SUT = new YakShayBus();
             SUT.RegisterType<SomeTestClass>();
             var resultingMessages = new List<Message>();
-            var msg = new Message("MethodToInvokeUsingAMessage", new
+            var msg = new Message("MethodToInvoke", new
             {
                 NotPartOfTheKey = "A",
                 AnotherPartOfTheUID = "B",
